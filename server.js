@@ -1,11 +1,12 @@
 import express from 'express';
 import multer from 'multer';
 import { randomBytes, createHash } from 'node:crypto';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { one, run } from './lib/db.js';
 import { sendActivationEmail, sendSolicitud, SOLICITUDES_TO } from './lib/mailer.js';
 import { hashPassword, verifyPassword, passwordError } from './lib/password.js';
+import { cifrar, cifradoListo } from './lib/cifrado.js';
 
 const PORT = +process.env.PORT || 4099;
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/+$/, '');
@@ -16,6 +17,7 @@ const COOKIE = 'sc_session';
 const ROLES = ['Dueño/a', 'Administración', 'Operaciones', 'Ventas', 'TI'];
 
 if (!process.env.RESEND_API_KEY) console.warn('⚠  Falta RESEND_API_KEY en .env: los correos no se podrán enviar.');
+if (!cifradoListo) console.warn('⚠  Falta CERT_ENC_KEY en .env: no se aceptarán envíos con el Facturador ShopCommerce (certificado digital).');
 if (!SOLICITUDES_TO.length) console.warn('⚠  Falta SOLICITUDES_TO en .env: las solicitudes de cotización/demo no llegarán a nadie.');
 
 const app = express();
@@ -71,7 +73,8 @@ const publicUser = u => ({
   nombre: u.nombre, correo: u.correo, telefono: u.telefono, rol: u.rol, estado: u.estado,
   tienePassword: !!u.password_hash,
   onboardingCompleto: !!u.onboarding_at,
-  empresa: u.onboarding?.empresa ?? null
+  // empresa era un texto en el contrato anterior; ahora es un objeto con razonSocial.
+  empresa: typeof u.onboarding?.empresa === 'string' ? u.onboarding.empresa : u.onboarding?.empresa?.razonSocial ?? null
 });
 
 // Middleware: exige sesión de un usuario activo.
@@ -200,31 +203,68 @@ app.post('/api/logout', async (req, res) => {
 // ---------- Resto del onboarding (pasos 2 a 8) ----------
 mkdirSync('uploads', { recursive: true });
 const LOGO_TYPES = { 'image/png': '.png', 'image/jpeg': '.jpg', 'image/svg+xml': '.svg', 'image/webp': '.webp' };
+const CERT_RE = /\.(pfx|p12)$/i;
+// En memoria: el certificado nunca toca el disco sin cifrar. Los archivos se escriben a mano más abajo.
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: 'uploads',
-    filename: (req, file, cb) => cb(null, `logo-${Date.now()}-${randomBytes(6).toString('hex')}${LOGO_TYPES[file.mimetype]}`)
-  }),
-  limits: { fileSize: 2 * 1048576, files: 1 },
-  fileFilter: (req, file, cb) => cb(null, file.fieldname === 'logo' && !!LOGO_TYPES[file.mimetype])
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1048576, files: 2, fields: 4 },
+  fileFilter: (req, file, cb) => cb(null, (file.fieldname === 'logo' && !!LOGO_TYPES[file.mimetype]) || (file.fieldname === 'certificado' && CERT_RE.test(file.originalname)))
 });
+
+// Revisión mínima del JSON del paso 8 (el front valida todo en detalle).
+function onboardingError(d) {
+  if (!d || typeof d !== 'object') return 'Datos inválidos.';
+  const e = d.empresa;
+  if (!e || !e.razonSocial || !e.rut || !e.giro || !e.direccion || !e.comuna || !e.ciudad) return 'Faltan datos de la empresa.';
+  if (!d.industria) return 'Falta la industria.';
+  if (!Array.isArray(d.locales) || !d.locales.length || d.locales.length > 50) return 'Debes registrar entre 1 y 50 locales.';
+  if (d.locales.some(l => !l?.codigo || !l.direccion || !l.comuna)) return 'Faltan datos de un local.';
+  if (!Array.isArray(d.canales) || !d.canales.length || d.canales.some(c => !Array.isArray(c?.mediosPago) || !c.mediosPago.length)) return 'Cada canal necesita al menos un medio de pago.';
+  if (!['shopcommerce', 'otro'].includes(d.facturador?.tipo) || (d.facturador.tipo === 'otro' && !d.facturador.nombre)) return 'Falta el facturador electrónico.';
+  if (!['basico', 'escala', 'premium'].includes(d.plan)) return 'Elige un plan válido.';
+  return '';
+}
 
 // Paso 8: guarda los datos y envía la solicitud (cotización o demo) al encargado de ShopCommerce.
 app.post('/api/onboarding', requireUser, (req, res, next) => {
   if (!req.user.password_hash) return res.status(403).json({ error: 'Primero crea tu contraseña.' });
   if (req.user.onboarding_at) return res.status(409).json({ error: 'Ya enviaste tu solicitud. Un ejecutivo te contactará pronto.' });
   next();
-}, upload.single('logo'), async (req, res) => {
+}, upload.fields([{ name: 'logo', maxCount: 1 }, { name: 'certificado', maxCount: 1 }]), async (req, res) => {
+  // La contraseña del certificado llega como campo aparte; nunca se guarda en texto plano ni se loguea.
+  const certPassword = String(req.body.certificadoPassword || '');
+  delete req.body.certificadoPassword;
   let data;
   try { data = JSON.parse(req.body.data || ''); } catch { return res.status(400).json({ error: 'Datos inválidos.' }); }
-  if (!data || typeof data !== 'object' || !data.empresa || !data.rut || !data.plan) return res.status(400).json({ error: 'Faltan datos del onboarding.' });
+  const err = onboardingError(data);
+  if (err) return res.status(400).json({ error: err });
   delete data.contacto; // los datos de contacto ya quedaron en el registro
   if (!['cotizacion', 'demo'].includes(data.tipo)) data.tipo = 'cotizacion';
 
+  const logoFile = req.files?.logo?.[0], cert = req.files?.certificado?.[0];
+  const conCert = data.facturador.tipo === 'shopcommerce';
+  if (conCert) {
+    if (!cert) return res.status(400).json({ error: 'Falta el certificado digital (.pfx o .p12).' });
+    if (certPassword.length < 4) return res.status(400).json({ error: 'La contraseña del certificado debe tener al menos 4 caracteres.' });
+    if (!cifradoListo) return res.status(503).json({ error: 'Por ahora no podemos recibir certificados. Inténtalo más tarde o elige otro facturador.' });
+  }
+
+  const id = `${Date.now()}-${randomBytes(6).toString('hex')}`;
+  let nuevoLogo = null;
+  if (logoFile) { nuevoLogo = `uploads/logo-${id}${LOGO_TYPES[logoFile.mimetype]}`; writeFileSync(nuevoLogo, logoFile.buffer); }
+  // Certificado y contraseña se guardan cifrados (AES-256-GCM, llave CERT_ENC_KEY fuera de la base de datos).
+  let certPath = null, certPassEnc = null;
+  if (conCert) {
+    certPath = `uploads/cert-${id}.enc`;
+    writeFileSync(certPath, cifrar(cert.buffer), { mode: 0o600 });
+    certPassEnc = cifrar(Buffer.from(certPassword, 'utf8')).toString('base64');
+  }
+  if (req.user.certificado_path && req.user.certificado_path !== certPath) rmSync(req.user.certificado_path, { force: true });
+
   // Se guarda antes de enviar para no perder datos; onboarding_at se marca solo si el encargado recibió la solicitud.
-  await run('UPDATE usuarios SET onboarding = $1, logo_path = COALESCE($2, logo_path) WHERE id = $3',
-    [JSON.stringify(data), req.file?.path ?? null, req.user.id]);
-  const logoPath = req.file?.path ?? req.user.logo_path;
+  await run('UPDATE usuarios SET onboarding = $1, logo_path = COALESCE($2, logo_path), certificado_path = $3, certificado_password_enc = $4 WHERE id = $5',
+    [JSON.stringify(data), nuevoLogo, certPath, certPassEnc, req.user.id]);
+  const logoPath = nuevoLogo ?? req.user.logo_path;
   const logo = logoPath && { path: logoPath, mimetype: Object.keys(LOGO_TYPES).find(t => logoPath.endsWith(LOGO_TYPES[t])) };
 
   try {
@@ -242,7 +282,7 @@ app.use('/assets', express.static(fileURLToPath(new URL('./assets', import.meta.
 app.get('/', (req, res) => res.sendFile(fileURLToPath(new URL('./index.html', import.meta.url))));
 
 app.use((err, req, res, next) => {
-  if (err instanceof multer.MulterError) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'El logo supera los 2 MB.' : 'Archivo inválido.' });
+  if (err instanceof multer.MulterError) return res.status(400).json({ error: err.code === 'LIMIT_FILE_SIZE' ? 'El archivo supera los 2 MB.' : 'Archivo inválido.' });
   console.error(err);
   res.status(500).json({ error: 'Error interno.' });
 });

@@ -1,7 +1,7 @@
 {
   "name": "onboarding-shopcommerce",
   "version": "1.0.0",
-  "description": "Página de login + onboarding en 8 pasos (Perfil, Empresa, Industria, Locales, Canales, Equipo, Plan, Revisión) y pantalla de activación por correo.",
+  "description": "Página de login + onboarding en 8 pasos (Perfil, Industria, Empresa, Locales, Canales, Equipo, Plan, Revisión) y pantalla de activación por correo.",
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
