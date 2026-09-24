@@ -8,9 +8,9 @@ Página de login + onboarding en 8 pasos (Perfil, Empresa, Industria, Locales, C
 ## Backend (Node + Resend)
 
 ```bash
-npm install
+pnpm install
 cp .env.example .env   # completa RESEND_API_KEY, MAIL_FROM y APP_URL
-npm start              # http://localhost:3000
+pnpm start             # http://localhost:4099
 ```
 
 La base de datos es Postgres en **Supabase** (`DATABASE_URL`, usa la connection string del *Session pooler*). Las tablas `usuarios` y `sesiones` se crean solas al arrancar, con RLS activado y sin políticas: la API pública de Supabase (anon key) no puede leerlas; solo este servidor. Los logos subidos quedan en `uploads/`.

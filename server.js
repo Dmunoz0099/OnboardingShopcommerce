@@ -7,7 +7,7 @@ import { one, run } from './lib/db.js';
 import { sendActivationEmail, sendSolicitud, SOLICITUDES_TO } from './lib/mailer.js';
 import { hashPassword, verifyPassword, passwordError } from './lib/password.js';
 
-const PORT = +process.env.PORT || 3000;
+const PORT = +process.env.PORT || 4099;
 const APP_URL = (process.env.APP_URL || `http://localhost:${PORT}`).replace(/\/+$/, '');
 const TTL_HOURS = +process.env.ACTIVATION_TTL_HOURS || 24;
 const RESEND_COOLDOWN_MS = 60_000;
