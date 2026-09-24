@@ -796,6 +796,18 @@ em{font-style:normal;color:var(--pri-text)}
   </div>
 </div>
 
+<!-- ============ ACTIVADA EN OTRA PESTAÑA ============ -->
+<div class="view" id="vHandoff" hidden>
+  <div class="done-view">
+    <div class="done-wrap enter">
+      <div class="done-badge pop"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div>
+      <h2>¡Cuenta activada!</h2>
+      <p class="sub">Sigue en la pestaña donde empezaste el registro. Ya puedes cerrar esta.</p>
+      <a href="#" id="handoffHere" style="margin-top:6px;font-size:14px">Prefiero seguir aquí</a>
+    </div>
+  </div>
+</div>
+
 <!-- ============ ONBOARDING COMPLETO ============ -->
 <div class="view" id="vReady" hidden>
   <div class="done-view">
@@ -1109,7 +1121,7 @@ em{font-style:normal;color:var(--pri-text)}
 
   // ---------- Navegación ----------
   function showView(id){
-    ['vLogin','vSteps','vDone','vPassword','vReady'].forEach(v => $(v).hidden = v !== id);
+    ['vLogin','vSteps','vDone','vPassword','vReady','vHandoff'].forEach(v => $(v).hidden = v !== id);
     const v = $(id); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
     window.scrollTo({top:0});
   }
@@ -1374,6 +1386,28 @@ em{font-style:normal;color:var(--pri-text)}
 
   syncLocal(); renderInvites(); setCollapse($('ecomOtroBox'), false); go(0, true);
 
+  // ---------- Activación en otra pestaña ----------
+  // El link del correo siempre abre una pestaña nueva. Esa pestaña avisa por BroadcastChannel;
+  // si hay una pestaña previa esperando la activación, ella retoma el flujo y la nueva queda como aviso.
+  const chan = 'BroadcastChannel' in window ? new BroadcastChannel('sc-activacion') : null;
+  const waitingActivation = () => !activated && !pwUser && !$('vDone').hidden;
+  chan && chan.addEventListener('message', async e => {
+    if(e.data !== 'activada' || !waitingActivation()) return;
+    chan.postMessage('tomada');
+    const u = await api('/api/me');
+    if(!u.ok || u.estado !== 'activo') return;
+    routeUser(u); window.focus();
+    toast(u.tienePassword ? 'Tu cuenta ya estaba activa.' : '¡Cuenta activada!');
+  });
+  // Devuelve true si otra pestaña tomó la activación (espera la respuesta un momento).
+  const handOff = () => new Promise(res => {
+    if(!chan) return res(false);
+    const t = setTimeout(() => { chan.removeEventListener('message', on); res(false); }, 500);
+    function on(e){ if(e.data === 'tomada'){ clearTimeout(t); chan.removeEventListener('message', on); res(true); } }
+    chan.addEventListener('message', on);
+    chan.postMessage('activada');
+  });
+
   // ---------- Vuelta desde el link de activación ----------
   // /activar redirige a /?activacion=ok|invalida|expirada. Con sesión activa se retoma en el paso 2.
   (async () => {
@@ -1389,6 +1423,12 @@ em{font-style:normal;color:var(--pri-text)}
     const u = await api('/api/me');
     if(!u.ok || u.estado !== 'activo'){
       if(estado === 'ok') toast('Tu sesión expiró. Abre de nuevo el link del correo.');
+      return;
+    }
+    if(estado === 'ok' && await handOff()){
+      showView('vHandoff');
+      $('handoffHere').addEventListener('click', e => { e.preventDefault(); routeUser(u); }, { once:true });
+      window.close(); // solo funciona si el navegador lo permite; si no, queda el aviso
       return;
     }
     routeUser(u);
