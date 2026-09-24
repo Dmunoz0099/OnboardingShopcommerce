@@ -19,20 +19,20 @@
   --ring:rgba(56,182,255,.45); --shadow:rgba(17,24,39,.5);
   --ease:cubic-bezier(.2,.8,.2,1); --spring:cubic-bezier(.2,1.4,.4,1);
   --fd:'Poppins',system-ui,sans-serif; --fb:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
-  --hdr:72px;
+  --hdr:72px; --glow:rgba(28,65,222,.12);
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --pri-text:#6F8BFF; --screen:#0E1627; --field:#0A1120; --card:#16213A;
     --soft:#141E33; --soft-2:#1B2640; --tint:#172552; --line:#2A3856; --line-2:#223050;
-    --ink:#E6EBF5; --muted:#9AA6BD; --err:#FF8A80; --err-bg:#3A1717; --shadow:rgba(0,0,0,.7); color-scheme:dark;
+    --ink:#E6EBF5; --muted:#9AA6BD; --err:#FF8A80; --err-bg:#3A1717; --shadow:rgba(0,0,0,.7); --glow:rgba(111,139,255,.16); color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --pri-text:#6F8BFF; --screen:#0E1627; --field:#0A1120; --card:#16213A;
   --soft:#141E33; --soft-2:#1B2640; --tint:#172552; --line:#2A3856; --line-2:#223050;
-  --ink:#E6EBF5; --muted:#9AA6BD; --err:#FF8A80; --err-bg:#3A1717; --shadow:rgba(0,0,0,.7); color-scheme:dark;
+  --ink:#E6EBF5; --muted:#9AA6BD; --err:#FF8A80; --err-bg:#3A1717; --shadow:rgba(0,0,0,.7); --glow:rgba(111,139,255,.16); color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
 html{scroll-padding-top:calc(var(--hdr) + 16px)}
@@ -60,12 +60,18 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 .page{max-width:1200px;margin:0 auto;padding:40px 24px 64px}
 .layout{display:grid;grid-template-columns:minmax(0,640px) minmax(0,1fr);gap:48px;align-items:start}
 .col-form{min-width:0}
-.art{position:sticky;top:calc(var(--hdr) + 24px);height:calc(100vh - var(--hdr) - 88px);min-height:520px;max-height:780px;border-radius:26px;background:var(--soft);overflow:hidden;transition:background-color .3s}
-.art .b1{position:absolute;width:440px;height:440px;border-radius:50%;background:var(--accent);opacity:.5;right:-170px;top:-140px}
-.art .b2{position:absolute;width:220px;height:220px;border-radius:50%;background:var(--teal);left:-70px;bottom:-60px;opacity:.85}
-.art .tag{position:absolute;left:28px;top:28px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.75);color:#111827;font-size:13px;font-weight:600;z-index:3}
+.art{position:sticky;top:calc(var(--hdr) + 24px);height:calc(100vh - var(--hdr) - 88px);min-height:520px;max-height:780px;overflow:visible}
 /* Lienzo de tamaño fijo que se escala para caber en la tarjeta (JS fija --k). */
-.canvas{position:absolute;left:50%;top:calc((100% - var(--reserve,0px)) / 2);width:var(--cw);height:var(--ch);transform:translate(-50%,-50%) scale(var(--k,1));transform-origin:center}
+.canvas{position:absolute;z-index:1;left:50%;top:calc((100% - var(--reserve,0px)) / 2);width:var(--cw);height:var(--ch);transform:translate(calc(-50% + var(--px,0px)),calc(-50% + var(--py,0px))) scale(var(--k,1));transform-origin:center;transition:transform .5s var(--ease)}
+/* Profundidad sin marco: puntos que se desvanecen hacia los bordes y un halo azul detrás de la ilustración. */
+.art::before{content:"";position:absolute;inset:-24px -24px 0;background-image:radial-gradient(circle,var(--line) 1.2px,transparent 1.7px);background-size:22px 22px;
+  -webkit-mask-image:radial-gradient(ellipse 58% 52% at 50% 42%,#000 15%,transparent 72%);mask-image:radial-gradient(ellipse 58% 52% at 50% 42%,#000 15%,transparent 72%);pointer-events:none}
+.art::after{content:"";position:absolute;left:50%;top:40%;width:80%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(closest-side,var(--glow),transparent);pointer-events:none}
+/* Texto que explica cada pantalla, bajo la ilustración. */
+.art-cap{position:absolute;left:0;right:0;bottom:8px;z-index:1;text-align:center;padding:0 24px}
+.art-cap::before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:var(--pri);margin:0 auto 14px}
+.art-cap h3{margin:0;font-family:var(--fd);font-size:22px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.art-cap p{margin:8px auto 0;max-width:340px;font-size:15px;line-height:1.5;color:var(--muted)}
 .scene{position:absolute;inset:0}
 
 /* ---------- Utilidades de animación ---------- */
@@ -283,13 +289,10 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 .social button:hover{transform:translateY(-1px)}
 .legal{margin:10px 0 0;font-size:13px;color:var(--muted);line-height:1.5}
 .legal a{font-weight:500}
-.art-login{background:#1C41DE;color:#fff}
-.art-login .b1{width:520px;height:520px;background:#38B6FF;opacity:.45;right:-230px;top:-160px}
-.art-login .b2{width:260px;height:260px;background:#00A79D;left:-80px;bottom:120px;top:auto;opacity:.55}
 .orbit-stage{position:absolute;left:50%;top:50%;width:0;height:0}
-.orbit-stage .disc{position:absolute;left:-120px;top:-120px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.1)}
+.orbit-stage .disc{position:absolute;left:-120px;top:-120px;width:240px;height:240px;border-radius:50%;background:var(--soft)}
 .orbit{position:absolute;inset:0;animation:spin 48s linear infinite}
-.orbit .ring{position:absolute;left:-202px;top:-202px;width:404px;height:404px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.5)}
+.orbit .ring{position:absolute;left:-202px;top:-202px;width:404px;height:404px;border-radius:50%;border:1.5px dashed var(--line)}
 .slot{position:absolute;left:0;top:0;width:0;height:0}
 .counter-rot{position:absolute;left:-103px;top:-28px;width:206px;height:56px;display:flex;align-items:center;animation:spin 48s linear infinite reverse}
 .cap{width:206px;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 8px;border-radius:999px;background:#fff;color:#111827;box-shadow:0 18px 34px -18px rgba(17,24,39,.55);
@@ -305,10 +308,10 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 .hub{position:absolute;left:-70px;top:-66px;width:140px;padding:18px 12px;border-radius:28px;background:#fff;color:#111827;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 30px 50px -24px rgba(17,24,39,.6)}
 .hub img{width:52px;height:auto}
 .hub span{font-family:var(--fd);font-size:13px;font-weight:600;text-align:center;line-height:1.25}
-.login-copy{position:absolute;left:40px;bottom:36px;right:40px;z-index:3}
-.login-copy .k{font-family:var(--fd);font-size:17px;font-weight:600;margin-bottom:10px}
+.login-copy{position:absolute;left:24px;bottom:8px;right:24px;z-index:3;color:var(--ink);text-align:center}
+.login-copy .k{font-family:var(--fd);font-size:17px;font-weight:600;margin-bottom:10px;color:var(--pri-text)}
 .login-copy h2{font-family:var(--fd);font-size:42px;line-height:1.05;letter-spacing:-.02em;font-weight:600;margin:0}
-.login-copy p{font-size:17px;margin:12px 0 0}
+.login-copy p{font-size:17px;margin:12px 0 0;color:var(--muted)}
 
 /* ---------- PASOS ---------- */
 .progress{display:flex;flex-direction:column;gap:10px}
@@ -333,7 +336,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 
 /* Escenas de la columna derecha (lienzo 470×700) */
 .idcard{position:absolute;left:85px;top:160px;width:300px;border-radius:30px;background:#fff;color:#111827;padding:28px;box-shadow:0 40px 60px -30px rgba(17,24,39,.5);transform:rotate(-3deg);display:flex;flex-direction:column;align-items:center;gap:12px}
-.backcard{position:absolute;left:110px;top:170px;width:280px;height:380px;border-radius:30px;background:var(--accent);opacity:.9}
+.backcard{position:absolute;left:110px;top:170px;width:280px;height:380px;border-radius:30px;background:#1C41DE;opacity:.9}
 .avatar{width:104px;height:104px;border-radius:50%;background:#1C41DE;color:#fff;font-family:var(--fd);font-size:38px;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none}
 .avatar img{width:100%;height:100%;object-fit:contain;background:#fff;padding:10px}
 .idcard .nm{font-family:var(--fd);font-size:24px;letter-spacing:-.02em;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -355,10 +358,10 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 .codes{position:absolute;left:40px;right:40px;top:470px;display:flex;flex-wrap:wrap;justify-content:center;gap:8px}
 .codes span{max-width:180px;padding:8px 12px;border-radius:999px;background:#fff;color:#111827;font-size:13px;font-weight:600;box-shadow:0 12px 24px -18px rgba(17,24,39,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;animation:pop .4s var(--spring) both}
 .codes span.more{background:#111827;color:#fff}
-.chan-list{position:absolute;left:50px;right:50px;top:100px;display:flex;flex-direction:column;gap:12px}
+.chan-list{position:absolute;left:50px;right:50px;top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:12px}
 .chan-list .cap{width:auto;animation:enter .5s var(--ease) both}
 .stack-av{position:absolute;left:30px;right:30px;top:190px;display:flex;justify-content:center}
-.stack-av span{width:84px;height:84px;margin-left:-22px;border-radius:50%;border:5px solid var(--soft);color:#fff;font-family:var(--fd);font-size:28px;display:flex;align-items:center;justify-content:center;animation:pop .45s var(--spring) both;flex:none}
+.stack-av span{width:84px;height:84px;margin-left:-22px;border-radius:50%;border:5px solid var(--screen);color:#fff;font-family:var(--fd);font-size:28px;display:flex;align-items:center;justify-content:center;animation:pop .45s var(--spring) both;flex:none}
 .stack-av span:first-child{margin-left:0}
 .stack-av span.more{background:#fff;color:#111827;font-size:22px}
 .teamcard{position:absolute;left:50px;right:50px;top:320px;padding:26px 30px;border-radius:28px;background:#fff;color:#111827;box-shadow:0 40px 60px -30px rgba(17,24,39,.45);text-align:center}
@@ -376,7 +379,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 .plan-illo li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .plan-back{position:absolute;left:120px;top:160px;width:270px;height:430px;border-radius:32px;background:#1C41DE}
 .badge-pos{position:absolute;left:50%;top:var(--top,250px);transform:translateX(-50%)}
-.done-badge{width:110px;height:110px;border-radius:36px;background:var(--accent);display:flex;align-items:center;justify-content:center;transform:rotate(-6deg);box-shadow:0 30px 50px -24px rgba(17,24,39,.5)}
+.done-badge{width:110px;height:110px;border-radius:36px;background:#1C41DE;display:flex;align-items:center;justify-content:center;transform:rotate(-6deg);box-shadow:0 30px 50px -24px rgba(17,24,39,.5)}
 .done-badge.xl{width:170px;height:170px;border-radius:52px}
 .done-badge svg{animation:fly .8s .15s var(--spring) both}
 @keyframes fly{from{transform:translate(-26px,18px) rotate(-18deg) scale(.4);opacity:0}}
@@ -502,8 +505,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </form>
   </div>
   <aside class="art art-login" aria-hidden="true">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="canvas" style="--cw:620px;--ch:500px;--reserve:210px">
+        <div class="canvas" style="--cw:620px;--ch:500px;--reserve:210px">
       <div class="orbit-stage">
         <div class="disc"></div>
         <div class="orbit" id="orbit"><div class="ring"></div></div>
@@ -529,7 +531,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     <form id="form" novalidate autocomplete="on">
 
     <!-- 1 Perfil -->
-    <section class="stage" data-step="perfil" data-name="Perfil">
+    <section class="stage" data-step="perfil" data-name="Perfil" data-art-t="Tu cuenta de administrador" data-art-d="Con ella activas ShopCommerce e invitas a tu equipo.">
       <h2>Cuéntanos <em>quién eres</em></h2>
       <p class="sub">Así sabremos con quién hablar y a dónde enviar tu link de activación.</p>
       <div class="body stack">
@@ -551,7 +553,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 2 Industria -->
-    <section class="stage" data-step="industria" data-name="Industria" hidden>
+    <section class="stage" data-step="industria" data-name="Industria" data-art-t="Un panel para tu rubro" data-art-d="Ajustamos tu panel a la industria que elijas." hidden>
       <h2>¿En qué <em>industria</em> estás?</h2>
       <p class="sub">Elige una. Ajustaremos tu panel a tu rubro.</p>
       <div class="body stack">
@@ -563,7 +565,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 3 Empresa -->
-    <section class="stage" data-step="empresa" data-name="Empresa" hidden>
+    <section class="stage" data-step="empresa" data-name="Empresa" data-art-t="Tu empresa en ShopCommerce" data-art-d="Con estos datos emitimos tu contrato y personalizamos tu panel." hidden>
       <h2>Tu <em>empresa</em></h2>
       <p class="sub">Con estos datos emitimos tu contrato y personalizamos tu panel.</p>
       <div class="body stack">
@@ -604,7 +606,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 4 Locales -->
-    <section class="stage" data-step="locales" data-name="Locales" hidden>
+    <section class="stage" data-step="locales" data-name="Locales" data-art-t="Todos tus locales conectados" data-art-d="Cada local con su código, dirección y comuna." hidden>
       <h2>¿Cuántos <em>locales</em> tienes?</h2>
       <p class="sub">Cuenta solo locales físicos con venta a público. Hasta 50.</p>
       <div class="body stack">
@@ -626,7 +628,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 5 Canales -->
-    <section class="stage" data-step="canales" data-name="Canales" hidden>
+    <section class="stage" data-step="canales" data-name="Canales" data-art-t="Todos tus canales en un lugar" data-art-d="Cómo te pagan en cada canal y con qué emites boletas y facturas." hidden>
       <h2>¿Cómo quieres <em>vender</em>?</h2>
       <p class="sub">Elige tus canales, cómo te pagan en cada uno y con qué emites boletas y facturas.</p>
       <div class="body stack">
@@ -663,7 +665,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 6 Equipo -->
-    <section class="stage" data-step="equipo" data-name="Equipo" hidden>
+    <section class="stage" data-step="equipo" data-name="Equipo" data-art-t="Trabaja con tu equipo" data-art-d="Les llega la invitación cuando actives tu cuenta." hidden>
       <h2>Invita a tu <em>equipo</em></h2>
       <p class="sub">Escribe un correo y presiona Enter. Les llegará la invitación cuando actives tu cuenta.</p>
       <div class="body stack">
@@ -681,7 +683,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 7 Plan -->
-    <section class="stage" data-step="plan" data-name="Plan" hidden>
+    <section class="stage" data-step="plan" data-name="Plan" data-art-t="Precio mensual en UF" data-art-d="Puedes cambiar de plan cuando quieras." hidden>
       <h2>Elige tu <em>plan</em></h2>
       <p class="sub">Precio mensual en UF. Puedes cambiar de plan cuando quieras.</p>
       <div class="body stack">
@@ -693,7 +695,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </section>
 
     <!-- 8 Revisión -->
-    <section class="stage" data-step="revision" data-name="Revisión" hidden>
+    <section class="stage" data-step="revision" data-name="Revisión" data-art-t="Tu solicitud, casi lista" data-art-d="Un ejecutivo de ShopCommerce te contactará." hidden>
       <h2>Revisa y <em>envía tu solicitud</em></h2>
       <p class="sub">Si algo está mal, edítalo antes de enviar. Un ejecutivo de ShopCommerce te contactará.</p>
       <div class="body stack" style="gap:12px">
@@ -716,9 +718,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
 
   <!-- Columna derecha: ilustración en vivo de cada paso -->
   <aside class="art" id="stepArt" aria-hidden="true">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="tag" id="artTag"></div>
-    <div class="canvas" style="--cw:470px;--ch:700px">
+        <div class="canvas" style="--cw:470px;--ch:700px;--reserve:130px">
 
     <div class="scene" data-scene="perfil">
       <div class="backcard float-b"></div>
@@ -780,7 +780,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
 
     <div class="scene" data-scene="revision" hidden>
-      <div class="plan-back float-b" style="background:#00A79D"></div>
+      <div class="plan-back float-b"></div>
       <div class="plan-illo enter-d">
         <div class="k">Tu solicitud</div>
         <div class="pn" id="iSumN">Tu empresa</div>
@@ -791,6 +791,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
 
     </div>
+    <div class="art-cap" id="artCap"><h3 id="capT"></h3><p id="capD"></p></div>
   </aside>
 </div>
 
@@ -813,9 +814,8 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
   </div>
   <aside class="art" aria-hidden="true" id="doneArt">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="canvas" style="--cw:470px;--ch:700px">
-      <div class="badge-pos" style="--top:40px"><div class="done-badge pop"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div></div>
+        <div class="canvas" style="--cw:470px;--ch:700px;--reserve:130px">
+      <div class="badge-pos" style="--top:40px"><div class="done-badge pop"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg></div></div>
       <div class="mail-mock enter-d">
         <div class="mh">Para: <b id="iTo">tu correo</b><br>Asunto: <b>Activa tu cuenta ShopCommerce</b></div>
         <div class="mb">
@@ -827,6 +827,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
         </div>
       </div>
     </div>
+    <div class="art-cap"><h3>Un paso más</h3><p>Activa tu cuenta desde el link que te enviamos.</p></div>
   </aside>
 </div>
 
@@ -851,11 +852,11 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
   </div>
   <aside class="art" aria-hidden="true">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="canvas" style="--cw:470px;--ch:700px">
+        <div class="canvas" style="--cw:470px;--ch:700px;--reserve:130px">
       <div class="backcard float-b" style="left:130px;top:190px;width:220px;height:300px"></div>
-      <div class="badge-pos" style="--top:250px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div></div>
+      <div class="badge-pos" style="--top:250px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4M12 15v2"/></svg></div></div>
     </div>
+    <div class="art-cap"><h3>Tu acceso a ShopCommerce</h3><p>Usarás esta contraseña para iniciar sesión.</p></div>
   </aside>
 </div>
 
@@ -869,10 +870,10 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
   </div>
   <aside class="art" aria-hidden="true">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="canvas" style="--cw:470px;--ch:700px">
-      <div class="badge-pos" style="--top:260px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div></div>
+        <div class="canvas" style="--cw:470px;--ch:700px;--reserve:130px">
+      <div class="badge-pos" style="--top:260px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div></div>
     </div>
+    <div class="art-cap"><h3>Cuenta activada</h3><p>Ya puedes cerrar esta pestaña y seguir en la otra.</p></div>
   </aside>
 </div>
 
@@ -886,10 +887,10 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
     </div>
   </div>
   <aside class="art" aria-hidden="true" id="readyArt">
-    <div class="b1"></div><div class="b2"></div>
-    <div class="canvas" style="--cw:470px;--ch:700px">
-      <div class="badge-pos" style="--top:260px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div></div>
+        <div class="canvas" style="--cw:470px;--ch:700px;--reserve:130px">
+      <div class="badge-pos" style="--top:260px"><div class="done-badge xl pop"><svg width="76" height="76" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg></div></div>
     </div>
+    <div class="art-cap"><h3>Solicitud enviada</h3><p>Un ejecutivo de ShopCommerce te contactará pronto.</p></div>
   </aside>
 </div>
 
@@ -1582,6 +1583,17 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
   const arts = [...document.querySelectorAll('.art')];
   if('ResizeObserver' in window){ const ro = new ResizeObserver(es => es.forEach(e => fitArt(e.target))); arts.forEach(a => ro.observe(a)); }
   else window.addEventListener('resize', () => arts.forEach(fitArt));
+  if(!reduced && window.matchMedia('(pointer: fine)').matches){
+    let raf = 0;
+    document.addEventListener('pointermove', e => {
+      if(raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const x = ((e.clientX / innerWidth - .5) * -14).toFixed(1) + 'px', y = ((e.clientY / innerHeight - .5) * -10).toFixed(1) + 'px';
+        arts.forEach(a => { a.style.setProperty('--px', x); a.style.setProperty('--py', y); });
+      });
+    });
+  }
 
   // ---------- Navegación ----------
   const VIEWS = ['vLogin','vSteps','vDone','vPassword','vReady','vHandoff'];
@@ -1612,8 +1624,9 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
       if(k === i) s.setAttribute('aria-current','step'); else s.removeAttribute('aria-current');
     });
     $('plabel').textContent = `Paso ${i+1} de ${stages.length} · ${st.dataset.name}`;
-    $('artTag').textContent = `Paso ${i+1} · ${st.dataset.name}`;
     $('skip').hidden = key !== 'equipo';
+    $('capT').textContent = st.dataset.artT; $('capD').textContent = st.dataset.artD;
+    const cap = $('artCap'); cap.classList.remove('enter'); if(!instant){ void cap.offsetWidth; cap.classList.add('enter'); }
     $('back').style.visibility = i === 0 ? 'hidden' : 'visible';
     $('nextLbl').textContent = i === LAST ? 'Enviar solicitud' : i === 0 && !activated ? 'Crear cuenta' : 'Continuar';
     $('fhint').hidden = true;
@@ -1808,7 +1821,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
   // Confeti fijo de la tarjeta de activación + estallido (siempre dentro de la columna derecha).
   function decorate(){
     const w = $('doneArt'); w.querySelectorAll('.cf').forEach(x => x.remove());
-    const C = ['#38B6FF','#1C41DE','#00A79D','#111827'];
+    const C = ['#1C41DE','#6F8BFF','#111827','#C7D2FE'];
     [[8,12],[18,70],[28,26],[6,48],[14,88],[82,14],[92,40],[74,78],[88,66],[70,24],[90,90],[4,30],[60,92],[36,6]].forEach((p,i) => {
       const s = document.createElement('span'); s.className = 'cf';
       const sz = 14 + (i*7) % 22;
@@ -1819,7 +1832,7 @@ button:focus-visible,a:focus-visible,[tabindex]:not([tabindex="-1"]):focus-visib
   function burst(card){
     if(reduced || !card.offsetWidth) return;
     const wrap = document.createElement('div'); wrap.className = 'burst'; card.appendChild(wrap);
-    const C = ['#38B6FF','#1C41DE','#00A79D','#111827','#7FD3FF'];
+    const C = ['#1C41DE','#6F8BFF','#111827','#C7D2FE'];
     const c = card.getBoundingClientRect(), o = card.querySelector('.done-badge').getBoundingClientRect();
     const ox = o.left - c.left + o.width/2, oy = o.top - c.top + o.height/2;
     for(let k = 0; k < 44; k++){
