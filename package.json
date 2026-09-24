@@ -1,0 +1,24 @@
+{
+  "name": "onboarding-shopcommerce",
+  "version": "1.0.0",
+  "description": "Página de login + onboarding en 8 pasos (Perfil, Empresa, Industria, Locales, Canales, Equipo, Plan, Revisión) y pantalla de activación por correo.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --watch --env-file-if-exists=.env server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "express": "^5.2.1",
+    "multer": "^2.4.0",
+    "pg": "^8.23.0",
+    "resend": "^6.28.1"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.6"
+  }
+}
